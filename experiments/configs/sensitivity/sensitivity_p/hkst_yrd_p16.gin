@@ -1,0 +1,44 @@
+build.module = 'experiments.forecast'
+build.repeat = 3
+build.data_dir = 'air_yrd/data.nc'
+build.model_type = 'hkst'
+build.subdir = 'sensitivity_p'
+
+build.variables_dict = {
+    'seed': [42, 123, 456],
+    'instance.output_len': [24, 48, 72, 96],
+    'ForecastDataset.variable_name': ['O3'],
+    'hkst.patch_sizes': [(16, 24, 32)],
+    'hkst.strides': [(8, 12, 16)]
+}
+
+instance.input_len = 48
+hkst.num_feat = 5
+hkst.hidden_dim = 128
+hkst.spat_layers = 3
+hkst.temp_layers = 2
+hkst.spat_rank = 32
+hkst.temp_rank = 128
+hkst.use_timestamp = False
+hkst.spat_decomp = True
+hkst.use_node_modem = True
+hkst.use_graph = True
+hkst.te_ortho_loss = True
+hkst.sp_ortho_loss = True
+hkst.recon_mask_ratio = 0.5
+
+train.loss_name = 'mse'
+train.epochs = 50
+get_scheduler.warmup_epochs = 5
+get_data.batch_size = 32
+Checkpoint.patience = 7
+
+ForecastDataset.scale = True
+ForecastDataset.train_size = 0.5
+ForecastDataset.val_size = 0.25
+ForecastDataset.test_size = 0.25
+
+instance.save_vals = False
+instance.save_pth = False
+instance.gso_path = 'air_yrd/adj_mx.pkl'
+instance.gso_type = 'sym_renorm_adj'

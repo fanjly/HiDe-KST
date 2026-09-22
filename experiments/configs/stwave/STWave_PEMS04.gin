@@ -1,0 +1,27 @@
+build.module = 'experiments.forecast'
+build.repeat = 3
+build.data_dir = 'PEMS04/data.dat'
+build.model_type = 'stwave'
+
+build.variables_dict = {
+    'seed': [42, 123, 456],
+    'instance.output_len': [24, 48, 72]
+}
+
+instance.input_len = 48
+stwave.wave = 'db1'
+stwave.steps_per_day = 288
+
+train.loss_name = 'mse'
+train.epochs = 50
+get_scheduler.warmup_epochs = 5
+get_data.batch_size = 32
+Checkpoint.patience = 7
+
+ForecastDataset.scale = True
+ForecastDataset.train_size = 0.6
+ForecastDataset.val_size = 0.2
+ForecastDataset.test_size = 0.2
+
+instance.save_vals = False
+instance.gso_path = 'PEMS04/adj_mx.pkl'

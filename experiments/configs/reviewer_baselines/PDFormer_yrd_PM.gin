@@ -1,0 +1,26 @@
+build.module = 'experiments.forecast'
+build.repeat = 3
+build.data_dir = 'air_yrd/data.nc'
+build.model_type = 'pdformer'
+build.subdir = 'reviewer_baselines'
+build.variables_dict = {
+    'seed': [42, 123, 456],
+    'instance.output_len': [24, 48, 72, 96],
+    'ForecastDataset.variable_name': ['PM2.5']
+}
+instance.input_len = 48
+pdformer.asset_path = 'air_yrd/pdformer_assets_PM25.npz'
+pdformer.time_feature_style = 'calendar'
+train.loss_name = 'mse'
+train.epochs = 50
+train.gradient_accumulation_steps = 4
+get_scheduler.warmup_epochs = 5
+get_data.batch_size = 8
+Checkpoint.patience = 7
+ForecastDataset.scale = True
+ForecastDataset.train_size = 0.5
+ForecastDataset.val_size = 0.25
+ForecastDataset.test_size = 0.25
+instance.save_vals = False
+instance.save_pth = False
+instance.gso_path = 'air_yrd/adj_mx.pkl'

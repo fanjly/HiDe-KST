@@ -1,0 +1,17 @@
+# Install the PyTorch build matching the local CUDA version separately.
+einops
+geopy
+matplotlib
+numpy
+pandas
+scikit_learn
+scipy
+sympy
+fire
+gin_config
+netcdf4
+tqdm
+torch_geometric
+PyWavelets
+fastdtw
+tslearn

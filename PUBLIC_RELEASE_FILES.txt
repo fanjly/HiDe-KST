@@ -1,0 +1,53 @@
+# HiDe-KST public release allowlist
+#
+# Stage only these paths in a clean public-release branch/repository. Review the
+# final staged diff before pushing. Dataset contents and experiment outputs are
+# intentionally absent.
+
+.gitignore
+README.md
+README_ZH.md
+PUBLIC_RELEASE_FILES.txt
+requirements.txt
+Makefile
+
+models/__init__.py
+models/hkst/
+models/dlinear/
+models/koopa/
+models/patchmlp/
+models/patchtst/
+models/itransformer/
+models/stwave/
+models/stdn/
+models/staeformer/
+models/pdformer/
+
+experiments/base.py
+experiments/datasets.py
+experiments/forecast.py
+experiments/preprocess_pdformer.py
+experiments/checkResult.py
+
+experiments/configs/hkst/
+experiments/configs/dlinear/
+experiments/configs/koopa/
+experiments/configs/patchmlp/
+experiments/configs/patchtst/
+experiments/configs/itransformer/
+experiments/configs/stwave/
+experiments/configs/stdn/
+experiments/configs/reviewer_baselines/
+experiments/configs/ablation/
+experiments/configs/sensitivity/
+experiments/configs/test/
+
+utils/
+
+datasets/PEMS03/.gitignore
+datasets/PEMS04/.gitignore
+datasets/PEMS07/.gitignore
+datasets/PEMS08/.gitignore
+datasets/air_yrd/.gitignore
+datasets/water_mn/.gitignore
+experiment_storage/.gitignore

@@ -1,0 +1,26 @@
+build.module = 'experiments.forecast'
+build.repeat = 3
+build.data_dir = 'PEMS04/data.dat'
+build.model_type = 'stdn'
+
+build.variables_dict = {
+    'seed': [42, 123],
+    'instance.output_len': [72, 96]
+}
+
+instance.input_len = 48
+stdn.time_slice_size = 5
+
+train.loss_name = 'mse'
+train.epochs = 50
+get_scheduler.warmup_epochs = 5
+get_data.batch_size = 16
+Checkpoint.patience = 3
+
+ForecastDataset.scale = True
+ForecastDataset.train_size = 0.6
+ForecastDataset.val_size = 0.2
+ForecastDataset.test_size = 0.2
+
+instance.save_vals = False
+instance.gso_path = 'PEMS04/adj_mx.pkl'
