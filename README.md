@@ -192,6 +192,18 @@ Checkpoint.patience = 7
 
 The default HiDe-KST architecture uses three blocks with patch sizes `[16, 24, 32]`, strides `[8, 12, 16]`, temporal rank 128, and dataset-dependent spatial rank.
 
+### v3: input-conditioned dynamic graph bases
+
+v3 augments the original static low-rank graph operator with four learnable factor-space graph bases. A compact router produces sample-specific mixing weights from the current input summary. The feature is controlled by `hkst.use_dynamic_graph_basis`; disabling it preserves the original static graph path exactly. All new configurations are written to `experiment_storage/dynamic_graph_v1/`, so the paper results are not overwritten.
+
+For four servers sharing the same experiment directory, first build all 84 frozen configurations once:
+
+```bash
+python -m experiments.run_dynamic_graph_v1 --server 1 --build-only
+```
+
+Then run `--server 1`, `--server 2`, `--server 3`, and `--server 4` on the four servers. The runner uses a stable round-robin split of the frozen configurations, assigning 21 non-overlapping jobs to each server and skipping instances already marked `_SUCCESS` or `_RUNNING`.
+
 ## Output format
 
 Generated files are stored under `experiment_storage/`:

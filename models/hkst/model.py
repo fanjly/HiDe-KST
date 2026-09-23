@@ -13,7 +13,11 @@ def hkst(num_nodes, input_len, output_len, adj_matrix,
          use_graph, patch_sizes, strides, recon_mask_ratio=1.0,
          te_ortho_loss=True, sp_ortho_loss=True, use_timestamp=True,
          evolution_mode: str = 'koopman', use_low_rank: bool = True,
-         use_cross_scale_gating: bool = True):
+         use_cross_scale_gating: bool = True,
+         use_dynamic_graph_basis: bool = False,
+         num_dynamic_graph_bases: int = 4,
+         dynamic_graph_scale: float = 0.1,
+         dynamic_graph_balance_weight: float = 0.01):
     return HKST(
         input_len=input_len,
         output_len=output_len,
@@ -38,6 +42,10 @@ def hkst(num_nodes, input_len, output_len, adj_matrix,
         evolution_mode=evolution_mode,
         use_low_rank=use_low_rank,
         use_cross_scale_gating=use_cross_scale_gating,
+        use_dynamic_graph_basis=use_dynamic_graph_basis,
+        num_dynamic_graph_bases=num_dynamic_graph_bases,
+        dynamic_graph_scale=dynamic_graph_scale,
+        dynamic_graph_balance_weight=dynamic_graph_balance_weight,
     )
 
 
@@ -46,7 +54,8 @@ class HKSTBlock(nn.Module):
                  spat_layers, temp_layers, spat_rank, temp_rank, spat_decomp, spat_res, temp_res_ln,
                  use_node_modem, prev_patch_num, use_graph, adj_matrix, dropout, te_ortho_loss, sp_ortho_loss,
                  time_dim=0, evolution_mode: str = 'koopman', use_low_rank: bool = True,
-                 use_cross_scale_gating: bool = True):
+                 use_cross_scale_gating: bool = True, use_dynamic_graph_basis: bool = False,
+                 num_dynamic_graph_bases: int = 4, dynamic_graph_scale: float = 0.1):
         super().__init__()
         self.input_len = input_len
         self.output_len = output_len
@@ -101,7 +110,10 @@ class HKSTBlock(nn.Module):
                 hidden_layers=self.spat_layers,
                 res=self.spat_res,
                 dropout=self.dropout,
-                adj_matrix=adj_matrix
+                adj_matrix=adj_matrix,
+                use_dynamic_graph_basis=use_dynamic_graph_basis,
+                num_dynamic_graph_bases=num_dynamic_graph_bases,
+                dynamic_graph_scale=dynamic_graph_scale,
             )
         else:
             self.spatial_aggregation = None
@@ -232,7 +244,9 @@ class HKST(nn.Module):
                  spat_res=False, temp_res_ln=True, use_timestamp=True, adj_matrix=None,
                  te_ortho_loss=True, sp_ortho_loss=True, show_stack=False,
                  evolution_mode: str = 'koopman', use_low_rank: bool = True,
-                 use_cross_scale_gating: bool = True):
+                 use_cross_scale_gating: bool = True, use_dynamic_graph_basis: bool = False,
+                 num_dynamic_graph_bases: int = 4, dynamic_graph_scale: float = 0.1,
+                 dynamic_graph_balance_weight: float = 0.01):
         super().__init__()
         self.input_len = input_len
         self.output_len = output_len
@@ -256,6 +270,12 @@ class HKST(nn.Module):
         self.evolution_mode = evolution_mode
         self.use_low_rank = use_low_rank
         self.use_cross_scale_gating = use_cross_scale_gating
+        if use_dynamic_graph_basis and not use_graph:
+            raise ValueError('use_dynamic_graph_basis requires use_graph=True')
+        self.use_dynamic_graph_basis = use_dynamic_graph_basis
+        self.num_dynamic_graph_bases = num_dynamic_graph_bases
+        self.dynamic_graph_scale = dynamic_graph_scale
+        self.dynamic_graph_balance_weight = dynamic_graph_balance_weight
 
         self.patch_sizes = patch_sizes
         self.strides = strides
@@ -310,6 +330,9 @@ class HKST(nn.Module):
                 evolution_mode=self.evolution_mode,
                 use_low_rank=self.use_low_rank,
                 use_cross_scale_gating=self.use_cross_scale_gating,
+                use_dynamic_graph_basis=self.use_dynamic_graph_basis,
+                num_dynamic_graph_bases=self.num_dynamic_graph_bases,
+                dynamic_graph_scale=self.dynamic_graph_scale,
             )
             self.blocks.append(block)
             prev_patch_num = block.patch_num_in
@@ -394,6 +417,15 @@ class HKST(nn.Module):
 
     def get_residual_signal(self):
         return self.res_signal
+
+    def get_dynamic_graph_loss(self):
+        if not self.use_dynamic_graph_basis or self.dynamic_graph_balance_weight <= 0:
+            return self.blocks[0].input_proj.layers[0].weight.new_zeros(())
+        balance_loss = sum(
+            block.spatial_aggregation.get_dynamic_graph_balance_loss()
+            for block in self.blocks
+        )
+        return self.dynamic_graph_balance_weight * balance_loss
 
     def get_spatial_matrices(self):
         if self.use_graph:

@@ -191,6 +191,18 @@ Checkpoint.patience = 7
 
 默认 HiDe-KST 使用三个 block，patch sizes 为 `[16, 24, 32]`，strides 为 `[8, 12, 16]`，时间 rank 为 128，空间 rank 根据数据集规模设置。
 
+### v3：输入条件化动态图基
+
+v3 在原有静态低秩图算子上增加四个可学习的因子空间图基，并由当前输入的全局摘要生成样本级路由权重。该功能通过 `hkst.use_dynamic_graph_basis` 控制；关闭时会严格保留原有静态图计算路径。新配置统一写入 `experiment_storage/dynamic_graph_v1/`，不会覆盖论文原始结果。
+
+使用四台服务器时，先在共享目录中生成全部 84 个配置：
+
+```bash
+python -m experiments.run_dynamic_graph_v1 --server 1 --build-only
+```
+
+随后分别在四台服务器执行 `--server 1`、`--server 2`、`--server 3` 和 `--server 4`。脚本按冻结配置的稳定排序轮转分配，每台 21 个任务，并自动跳过已有 `_SUCCESS` 或 `_RUNNING` 的实例。
+
 ## 实验输出
 
 实验结果保存在 `experiment_storage/`：

@@ -253,6 +253,8 @@ def train(model: nn.Module,
             if hasattr(model, 'get_residual_signal') and model.recon_mask_ratio > 0:
                 res_signal = model.get_residual_signal()
                 losses.append(training_loss_fn(res_signal, torch.zeros_like(res_signal)))
+            if hasattr(model, 'get_dynamic_graph_loss') and model.use_dynamic_graph_basis:
+                losses.append(model.get_dynamic_graph_loss())
             loss = torch.sum(torch.stack(losses))
             (loss / gradient_accumulation_steps).backward()
             should_step = ((it + 1) % gradient_accumulation_steps == 0

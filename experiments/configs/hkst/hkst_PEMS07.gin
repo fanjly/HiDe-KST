@@ -2,6 +2,7 @@ build.module = 'experiments.forecast'
 build.repeat = 3
 build.data_dir = 'PEMS07/data.dat'
 build.model_type = 'hkst'
+build.subdir = 'dynamic_graph_v1'
 
 build.variables_dict = {
     'seed': [42, 123, 456],
@@ -18,6 +19,10 @@ hkst.temp_rank = 128
 hkst.spat_decomp = True
 hkst.use_node_modem = True
 hkst.use_graph = True
+hkst.use_dynamic_graph_basis = True
+hkst.num_dynamic_graph_bases = 4
+hkst.dynamic_graph_scale = 0.1
+hkst.dynamic_graph_balance_weight = 0.01
 hkst.patch_sizes = [16, 24, 32]
 hkst.strides = [8, 12, 16]
 hkst.te_ortho_loss = True

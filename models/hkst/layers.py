@@ -150,7 +150,8 @@ class KoopmanLayer(nn.Module):
 
 class AdaptiveSpatialFactorization(nn.Module):
     def __init__(self, num_nodes, rank, input_dim, output_dim, hidden_dim, hidden_layers,
-                 res, dropout, adj_matrix=None):
+                 res, dropout, adj_matrix=None, use_dynamic_graph_basis=False,
+                 num_dynamic_graph_bases=4, dynamic_graph_scale=0.1):
         super().__init__()
         self.num_nodes = num_nodes
         self.rank = rank
@@ -160,6 +161,12 @@ class AdaptiveSpatialFactorization(nn.Module):
         self.hidden_layers = hidden_layers
         self.res = res
         self.dropout = dropout
+        self.use_dynamic_graph_basis = use_dynamic_graph_basis
+        self.num_dynamic_graph_bases = num_dynamic_graph_bases
+        self.dynamic_graph_scale = dynamic_graph_scale
+
+        if self.use_dynamic_graph_basis and self.num_dynamic_graph_bases < 1:
+            raise ValueError('num_dynamic_graph_bases must be at least 1')
 
         self.P = nn.Parameter(torch.randn(num_nodes, self.rank))
         nn.init.orthogonal_(self.P)
@@ -170,10 +177,40 @@ class AdaptiveSpatialFactorization(nn.Module):
         self.ln = nn.LayerNorm(self.output_dim)
         self.register_buffer("adj", adj_matrix)
 
+        if self.use_dynamic_graph_basis:
+            router_hidden = max(8, self.input_dim // 4)
+            self.graph_router = nn.Sequential(
+                nn.LayerNorm(self.input_dim),
+                nn.Linear(self.input_dim, router_hidden),
+                nn.GELU(),
+                nn.Linear(router_hidden, self.num_dynamic_graph_bases),
+            )
+            self.graph_bases = nn.Parameter(
+                torch.empty(self.num_dynamic_graph_bases, self.rank, self.rank)
+            )
+            nn.init.normal_(self.graph_bases, mean=0.0, std=0.02)
+            nn.init.zeros_(self.graph_router[-1].weight)
+            nn.init.zeros_(self.graph_router[-1].bias)
+        else:
+            self.graph_router = None
+            self.register_parameter('graph_bases', None)
+
+        self._last_router_weights = None
+
     def forward(self, x):
         # x: [Batch, Nodes, Time, Features]
-        A_low = self.P.t() @ (self.adj @ self.P)
-        A_low = F.relu(A_low)
+        A_static = self.P.t() @ (self.adj @ self.P)
+
+        if self.use_dynamic_graph_basis:
+            summary = x.mean(dim=(1, 2))
+            router_weights = F.softmax(self.graph_router(summary), dim=-1)
+            bases = 0.5 * (self.graph_bases + self.graph_bases.transpose(-1, -2))
+            A_dynamic = torch.einsum('bm,mrs->brs', router_weights, bases)
+            A_low = F.relu(A_static.unsqueeze(0) + self.dynamic_graph_scale * A_dynamic)
+            self._last_router_weights = router_weights
+        else:
+            A_low = F.relu(A_static)
+            self._last_router_weights = None
 
         z = torch.einsum("bnfc,nr->brfc", x, self.P)
         z = self.gcn(z, A_low)
@@ -185,6 +222,13 @@ class AdaptiveSpatialFactorization(nn.Module):
             z = F.gelu(z)
 
         return z
+
+    def get_dynamic_graph_balance_loss(self):
+        if self._last_router_weights is None:
+            return self.P.new_zeros(())
+        mean_usage = self._last_router_weights.mean(dim=0)
+        target = torch.full_like(mean_usage, 1.0 / self.num_dynamic_graph_bases)
+        return self.num_dynamic_graph_bases * torch.mean((mean_usage - target) ** 2)
 
     def get_ortho_loss(self):
         # constrain to be orthogonal by loss function tr(F @ F^T), F=P^T @ P - I

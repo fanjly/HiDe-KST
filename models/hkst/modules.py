@@ -131,7 +131,12 @@ class GraphConv(nn.Module):
 
     def forward(self, x, gso):
         # x: [Batch, Nodes, Time, Features]
-        first_mul = torch.einsum('nm,bmtc->bntc', gso, x)
+        if gso.dim() == 2:
+            first_mul = torch.einsum('nm,bmtc->bntc', gso, x)
+        elif gso.dim() == 3:
+            first_mul = torch.einsum('bnm,bmtc->bntc', gso, x)
+        else:
+            raise ValueError(f'gso must be 2D or 3D, got shape {tuple(gso.shape)}')
         second_mul = torch.einsum('bnti,ij->bntj', first_mul, self.weight)
 
         if self.bias is not None:

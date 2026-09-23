@@ -28,6 +28,7 @@ experiments/datasets.py
 experiments/forecast.py
 experiments/preprocess_pdformer.py
 experiments/checkResult.py
+experiments/run_dynamic_graph_v1.py
 
 experiments/configs/hkst/
 experiments/configs/dlinear/
@@ -43,6 +44,7 @@ experiments/configs/sensitivity/
 experiments/configs/test/
 
 utils/
+tests/
 
 datasets/PEMS03/.gitignore
 datasets/PEMS04/.gitignore
