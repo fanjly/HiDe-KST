@@ -60,7 +60,7 @@ pip install -r requirements.txt
 
 ## 数据准备
 
-所有数据应放置在 `datasets/` 下。整理后的数据压缩包和网盘下载链接将在后续补充；当前公开版本不包含原始数据。数据链接发布后，请下载并校验文件，然后直接解压到仓库根目录：
+所有数据应放置在 `datasets/` 下。7 个处理后的数据集可以通过[天翼云盘](https://cloud.189.cn/t/ANJ36nzIVvYr)下载，访问码为 `ap6b`。下载数据压缩包后，请直接将其解压到仓库根目录：
 
 ```bash
 sha256sum hidekst_datasets.zip
@@ -109,8 +109,6 @@ Gin 配置中的数据路径均相对于 `datasets/`：
 build.data_dir = 'PEMS08/data.dat'
 instance.gso_path = 'PEMS08/adj_mx.pkl'
 ```
-
-不要在 README 中填写网盘账号密码或私人访问令牌。如果数据许可证不允许重新分发，应把网盘链接改为官方数据链接和预处理说明。
 
 ## 快速开始
 

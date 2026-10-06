@@ -59,14 +59,12 @@ pip install -r requirements.txt
 
 ## Data preparation
 
-The repository expects all datasets under `datasets/`. The prepared dataset archive and cloud-drive link will be added later; raw data are not included in the current public release. After the link becomes available, download and verify the archive, then extract it directly into the repository root:
+The repository expects all datasets under `datasets/`. The seven processed datasets can be downloaded from [Tianyi Cloud](https://cloud.189.cn/t/ANJ36nzIVvYr) using the access code `ap6b`. After downloading the archive, extract it directly into the repository root:
 
 ```bash
 sha256sum hidekst_datasets.zip
 unzip hidekst_datasets.zip -d .
 ```
-
-Do not put account credentials or a private cloud-drive token in the README. If redistribution is not permitted, provide official dataset links and preprocessing instructions instead.
 
 Expected layout:
 
