@@ -13,7 +13,8 @@ def hkst(num_nodes, input_len, output_len, adj_matrix,
          use_graph, patch_sizes, strides, recon_mask_ratio=1.0,
          te_ortho_loss=True, sp_ortho_loss=True, use_timestamp=True,
          evolution_mode: str = 'koopman', use_low_rank: bool = True,
-         use_cross_scale_gating: bool = True):
+         use_cross_scale_gating: bool = True,
+         share_branch_koopman: bool = False):
     return HKST(
         input_len=input_len,
         output_len=output_len,
@@ -38,6 +39,7 @@ def hkst(num_nodes, input_len, output_len, adj_matrix,
         evolution_mode=evolution_mode,
         use_low_rank=use_low_rank,
         use_cross_scale_gating=use_cross_scale_gating,
+        share_branch_koopman=share_branch_koopman,
     )
 
 
@@ -46,7 +48,8 @@ class HKSTBlock(nn.Module):
                  spat_layers, temp_layers, spat_rank, temp_rank, spat_decomp, spat_res, temp_res_ln,
                  use_node_modem, prev_patch_num, use_graph, adj_matrix, dropout, te_ortho_loss, sp_ortho_loss,
                  time_dim=0, evolution_mode: str = 'koopman', use_low_rank: bool = True,
-                 use_cross_scale_gating: bool = True):
+                 use_cross_scale_gating: bool = True,
+                 share_branch_koopman: bool = False):
         super().__init__()
         self.input_len = input_len
         self.output_len = output_len
@@ -71,6 +74,12 @@ class HKSTBlock(nn.Module):
         self.evolution_mode = evolution_mode
         self.use_low_rank = use_low_rank
         self.use_cross_scale_gating = use_cross_scale_gating
+        self.share_branch_koopman = share_branch_koopman
+        # Read-only analysis controls. They remain disabled during normal
+        # training and inference and therefore do not alter reported results.
+        self.capture_spatial_branches = False
+        self.ablate_spatial_branch = None
+        self.spatial_branch_outputs = None
 
         self.patch_num_in = (self.input_len - self.patch_size) // self.stride + 1
         target_len = (self.patch_num_in - 1) * self.stride + self.patch_size
@@ -137,6 +146,12 @@ class HKSTBlock(nn.Module):
                 evolution_mode=self.evolution_mode,
                 use_low_rank=self.use_low_rank,
             )
+            if self.share_branch_koopman:
+                if self.evolution_mode != 'koopman':
+                    raise ValueError(
+                        'share_branch_koopman requires evolution_mode=koopman'
+                    )
+                self.koopman_evolution_res.K = self.koopman_evolution.K
 
         self.backcast_head = MLP(self.patch_num_in * self.hidden_dim, self.input_len,
                                  self.hidden_dim, 2, self.temp_res_ln, self.dropout)
@@ -192,12 +207,25 @@ class HKSTBlock(nn.Module):
 
         if self.use_graph:
             z_aggregated = self.spatial_aggregation(z)
-            z_back, z_fore = self.koopman_evolution(z_aggregated, y_time=y_time_patched)
+            z_back_global, z_fore_global = self.koopman_evolution(
+                z_aggregated, y_time=y_time_patched
+            )
             if self.spat_decomp:
                 z_res = z - z_aggregated
                 z_back_res, z_fore_res = self.koopman_evolution_res(z_res, y_time=y_time_patched)
-                z_back = z_back + z_back_res
-                z_fore = z_fore + z_fore_res
+                if self.capture_spatial_branches:
+                    self.spatial_branch_outputs = (
+                        z_fore_global.detach(), z_fore_res.detach()
+                    )
+                if self.ablate_spatial_branch == 'global':
+                    z_back, z_fore = z_back_res, z_fore_res
+                elif self.ablate_spatial_branch == 'residual':
+                    z_back, z_fore = z_back_global, z_fore_global
+                else:
+                    z_back = z_back_global + z_back_res
+                    z_fore = z_fore_global + z_fore_res
+            else:
+                z_back, z_fore = z_back_global, z_fore_global
         else:
             z_back, z_fore = self.koopman_evolution(z, y_time=y_time_patched)
 
@@ -232,7 +260,8 @@ class HKST(nn.Module):
                  spat_res=False, temp_res_ln=True, use_timestamp=True, adj_matrix=None,
                  te_ortho_loss=True, sp_ortho_loss=True, show_stack=False,
                  evolution_mode: str = 'koopman', use_low_rank: bool = True,
-                 use_cross_scale_gating: bool = True):
+                 use_cross_scale_gating: bool = True,
+                 share_branch_koopman: bool = False):
         super().__init__()
         self.input_len = input_len
         self.output_len = output_len
@@ -256,6 +285,11 @@ class HKST(nn.Module):
         self.evolution_mode = evolution_mode
         self.use_low_rank = use_low_rank
         self.use_cross_scale_gating = use_cross_scale_gating
+        self.share_branch_koopman = share_branch_koopman
+        if self.share_branch_koopman and not self.spat_decomp:
+            raise ValueError(
+                'share_branch_koopman requires spatial decomposition'
+            )
 
         self.patch_sizes = patch_sizes
         self.strides = strides
@@ -310,6 +344,7 @@ class HKST(nn.Module):
                 evolution_mode=self.evolution_mode,
                 use_low_rank=self.use_low_rank,
                 use_cross_scale_gating=self.use_cross_scale_gating,
+                share_branch_koopman=self.share_branch_koopman,
             )
             self.blocks.append(block)
             prev_patch_num = block.patch_num_in
@@ -400,6 +435,24 @@ class HKST(nn.Module):
             return [b.spatial_aggregation.get_low_rank_gso() for b in self.blocks]
         else:
             return None
+
+    def set_spatial_branch_analysis(self, capture=False, ablate=None):
+        """Configure inference-only capture or removal of a spatial branch."""
+        if ablate not in (None, 'global', 'residual'):
+            raise ValueError("ablate must be None, 'global', or 'residual'")
+        if (capture or ablate is not None) and not self.spat_decomp:
+            raise ValueError('spatial branch analysis requires spat_decomp=True')
+        for block in self.blocks:
+            block.capture_spatial_branches = bool(capture)
+            block.ablate_spatial_branch = ablate
+            block.spatial_branch_outputs = None
+
+    def get_spatial_branch_outputs(self):
+        """Return per-block latent forecasts as (global, residual) pairs."""
+        outputs = [block.spatial_branch_outputs for block in self.blocks]
+        if any(output is None for output in outputs):
+            raise RuntimeError('enable capture and run a forward pass first')
+        return outputs
 
     def get_koopman_matrices(self):
         # Returns per-block (U, K, V) tuples. When evolution_mode='none', K is None.

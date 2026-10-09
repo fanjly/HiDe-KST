@@ -41,6 +41,18 @@ class Experiment(ABC):
         """
         logging.info('Creating experiment instances ...')
 
+        # Keep the early-stopping protocol visible in every generated path.
+        # This prevents a rebuild with a different patience from overwriting or
+        # being mistaken for an older completed run.
+        variables_dict = dict(variables_dict)
+        if 'Checkpoint.patience' not in variables_dict:
+            try:
+                patience = gin.query_parameter('Checkpoint.patience')
+            except ValueError:
+                patience = None
+            if patience is not None:
+                variables_dict['Checkpoint.patience'] = [patience]
+
         seed_list = variables_dict.pop('seed', [])
         if seed_list:
             variables_dict['seed'] = seed_list

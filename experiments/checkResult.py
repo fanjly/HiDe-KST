@@ -33,7 +33,7 @@ FULL_RESULT_ROOTS = {
 }
 
 
-def collect_seed_metrics(root, require_koopman=False):
+def collect_seed_metrics(root, require_koopman=False, required_params=()):
     results = {}
     for metric_file in root.glob('**/metrics.npy'):
         relative_parts = metric_file.relative_to(root).parts
@@ -42,6 +42,8 @@ def collect_seed_metrics(root, require_koopman=False):
 
         params_dir, seed_dir = relative_parts[-3], relative_parts[-2]
         if require_koopman and 'evolution_mode=koopman' not in params_dir:
+            continue
+        if any(value not in params_dir for value in required_params):
             continue
 
         output_match = re.search(r'output_len=(\d+)', params_dir)

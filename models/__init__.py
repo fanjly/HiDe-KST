@@ -12,6 +12,10 @@ from .stwave.models import stwave
 from .stdn.model import stdn
 from .staeformer.model import staeformer
 from .pdformer.model import pdformer
+from .skolr.model import skolr
+from .timemixer.model import timemixer
+from .moderntcn.model import moderntcn
+from .stid.model import stid
 # from .dstmamba.DSTMamba_Arch import dstmamba
 
 
@@ -48,6 +52,14 @@ def get_model(model_type: str, **kwargs: Union[int, float]) -> torch.nn.Module:
         model = staeformer(kwargs['num_nodes'], kwargs['input_len'], kwargs['output_len'])
     elif model_type == 'pdformer':
         model = pdformer(kwargs['num_nodes'], kwargs['input_len'], kwargs['output_len'])
+    elif model_type == 'skolr':
+        model = skolr(kwargs['num_nodes'], kwargs['input_len'], kwargs['output_len'])
+    elif model_type == 'timemixer':
+        model = timemixer(kwargs['num_nodes'], kwargs['input_len'], kwargs['output_len'])
+    elif model_type == 'moderntcn':
+        model = moderntcn(kwargs['num_nodes'], kwargs['input_len'], kwargs['output_len'])
+    elif model_type == 'stid':
+        model = stid(kwargs['num_nodes'], kwargs['input_len'], kwargs['output_len'])
     # elif model_type == 'dstmamba':
     #     model = dstmamba(kwargs['num_nodes'], kwargs['input_len'], kwargs['output_len'])
 

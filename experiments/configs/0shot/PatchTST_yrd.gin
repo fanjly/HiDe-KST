@@ -1,0 +1,27 @@
+build.module = 'experiments.forecast'
+build.repeat = 3
+build.data_dir = 'air_yrd/data.nc'
+build.model_type = 'patchtst'
+
+build.variables_dict = {
+    'seed': [42, 123],
+    'instance.output_len': [24, 48, 72, 96],
+    'ForecastDataset.variable_name': ['PM2.5', 'O3']
+}
+
+instance.input_len = 48
+patchtst.individual = 0
+
+train.loss_name = 'mse'
+train.epochs = 50
+get_scheduler.warmup_epochs = 5
+get_data.batch_size = 32
+Checkpoint.patience = 7
+
+ForecastDataset.scale = True
+ForecastDataset.train_size = 0.5
+ForecastDataset.val_size = 0.25
+ForecastDataset.test_size = 0.25
+
+instance.save_vals = False
+instance.save_pth = True

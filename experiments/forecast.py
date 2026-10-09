@@ -134,7 +134,8 @@ class ForecastExperiment(Experiment):
 def get_optimizer(model: nn.Module,
                   lr: Optional[float] = 1e-3,
                   lambda_lr: Optional[float] = 1.,
-                  weight_decay: Optional[float] = 0.) -> optim.Optimizer:
+                  weight_decay: Optional[float] = 0.,
+                  optimizer_name: Optional[str] = 'adam') -> optim.Optimizer:
     group1 = []  # lambda
     group2 = []  # no decay
     group3 = []  # decay
@@ -146,7 +147,13 @@ def get_optimizer(model: nn.Module,
             group2.append(param)
         else:
             group3.append(param)
-    optimizer = optim.Adam([
+    optimizer_classes = {
+        'adam': optim.Adam,
+        'adamw': optim.AdamW,
+    }
+    if optimizer_name.lower() not in optimizer_classes:
+        raise ValueError(f'No such optimizer, {optimizer_name}')
+    optimizer = optimizer_classes[optimizer_name.lower()]([
         {'params': group1, 'weight_decay': 0, 'lr': lambda_lr, 'scheduler': 'cosine_annealing'},
         {'params': group2, 'weight_decay': 0, 'scheduler': 'cosine_annealing_with_linear_warmup'},
         {'params': group3, 'scheduler': 'cosine_annealing_with_linear_warmup'},
