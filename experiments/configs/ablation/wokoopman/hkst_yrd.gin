@@ -7,8 +7,9 @@ build.subdir = 'ablation_wokoopman'
 build.variables_dict = {
     'seed': [42, 123, 456],
     'instance.output_len': [24, 48, 72, 96],
-    'ForecastDataset.variable_name': ['O3'],
-    'hkst.evolution_mode': ['none']
+    'ForecastDataset.variable_name': ['PM2.5', 'O3'],
+    'hkst.evolution_mode': ['none'],
+    'Checkpoint.patience': [7]
 }
 
 instance.input_len = 48
@@ -32,7 +33,7 @@ train.loss_name = 'mse'
 train.epochs = 50
 get_scheduler.warmup_epochs = 5
 get_data.batch_size = 32
-Checkpoint.patience = 5
+Checkpoint.patience = 7
 
 ForecastDataset.scale = True
 ForecastDataset.train_size = 0.5
